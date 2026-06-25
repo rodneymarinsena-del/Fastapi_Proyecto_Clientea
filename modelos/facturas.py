@@ -5,7 +5,6 @@ from .clientes import Cliente
 from .transacciones import Transaccion
 
 class FacturaBase(BaseModel):
-    # El cliente se asignará dinámicamente en el main
     cliente: Cliente | None = None
     fecha: datetime = datetime.now()
     transacciones: List[Transaccion] = []
@@ -13,7 +12,10 @@ class FacturaBase(BaseModel):
     @computed_field
     @property
     def valor_total(self) -> float:
-        return 0.0  # Lógica de cálculo pendiente para el futuro
+        total_factura = 0.0
+        for transaccion in self.transacciones:
+            total_factura += (transaccion.cantidad * transaccion.valor_unitario)
+        return total_factura
 
 class Factura(FacturaBase):
     id: int | None = None

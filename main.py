@@ -103,13 +103,61 @@ async def listar_transaccion(transaccion_id: int):
     pass
 
 @app.post("/transacciones/{factura_id}", response_model=Transaccion)
-async def crear_transaccion(factura_id: int, transaccion_crear: TransaccionCrear):
-    pass
+async def crear_transaccion(factura_id: int, datos_transaccion: TransaccionCrear):
+    # Lógica idéntica a la que el profesor escribe en el video
+    factura_encontrada = None
+    for factura in lista_facturas:
+        if factura.id == factura_id:
+            factura_encontrada = factura
+            break
+            
+    if not factura_encontrada:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, 
+            detail=f"La factura con ID {factura_id} no existe"
+        )
+        
+    # Validamos los datos enviándolos a diccionario
+    transaccion_validada = Transaccion.model_validate(datos_transaccion.model_dump())
+    
+    # Generamos el ID automático
+    transaccion_validada.id = len(lista_transacciones) + 1
+    # Le asignamos a la transacción el ID de la factura que vino por la URL
+    transaccion_validada.factura_id = factura_id
+    
+    # Agregamos la transacción validada a la lista interna de la factura encontrada
+    factura_encontrada.transacciones.append(transaccion_validada)
+    # También a la lista general de transacciones
+    lista_transacciones.append(transaccion_validada)
+    
+    return transaccion_validada
 
+# TAREA: EDITAR TRANSACCION (PATCH)
 @app.patch("/transacciones/{transaccion_id}", response_model=Transaccion)
 async def editar_transaccion(transaccion_id: int, datos_transaccion: TransaccionEditar):
-    pass
+    # Buscamos la transacción en la lista global
+    for trans in lista_transacciones:
+        if trans.id == transaccion_id:
+            # Actualizamos sus datos
+            trans.cantidad = datos_transaccion.cantidad
+            trans.valor_unitario = datos_transaccion.valor_unitario
+            return trans
+    # Si termina el ciclo y no encuentra nada, lanzamos error
+    raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Transacción no encontrada")
 
+# TAREA: ELIMINAR TRANSACCION (DELETE)
 @app.delete("/transacciones/{transaccion_id}", response_model=Transaccion)
 async def eliminar_transaccion(transaccion_id: int):
-    pass
+    # 1. Buscamos y eliminamos de la lista global
+    for i, trans in enumerate(lista_transacciones):
+        if trans.id == transaccion_id:
+            transaccion_eliminada = lista_transacciones.pop(i)
+            
+            # 2. LIMPIEZA DOBLE: También debemos eliminarla de la factura correspondiente
+            # Si no hacemos esto, la factura seguiría mostrando la transacción eliminada
+            for factura in lista_facturas:
+                factura.transacciones = [t for t in factura.transacciones if t.id != transaccion_id]
+            
+            return transaccion_eliminada
+            
+    raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Transacción no encontrada")
