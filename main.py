@@ -1,5 +1,4 @@
 from fastapi import FastAPI, HTTPException, status
-from pydantic import BaseModel
 from typing import List
 from modelos.clientes import Cliente, ClienteCrear, ClienteEditar
 from modelos.facturas import Factura, FacturaCrear, FacturaEditar
@@ -7,7 +6,7 @@ from modelos.transacciones import Transaccion, TransaccionCrear, TransaccionEdit
 
 app = FastAPI()
 
-# Base de datos en memoria
+# Base de datos en memoria para cada modelo
 lista_clientes: List[Cliente] = []
 lista_facturas: List[Factura] = []
 lista_transacciones: List[Transaccion] = []
@@ -64,28 +63,27 @@ async def listar_factura(factura_id: int):
 
 @app.post("/facturas/{cliente_id}", response_model=Factura)
 async def crear_factura(cliente_id: int, factura_crear: FacturaCrear):
-
+    # Buscar cliente
     cliente_encontrado = None
     for cliente in lista_clientes:
         if cliente.id == cliente_id:
             cliente_encontrado = cliente
             break
     
+    # Validar existencia
     if not cliente_encontrado:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST, 
-            detail=f"El cliente con ID {cliente_id} no existe, no se puede crear la factura"
+            detail=f"El cliente con ID {cliente_id} no existe"
         )
     
-    id_factura = len(lista_facturas) + 1
-    val = Factura.model_validate(factura_crear.model_dump())
-    val.id = id_factura
+    # Crear, validar, asignar cliente e ID, guardar
+    factura_validada = Factura.model_validate(factura_crear.model_dump())
+    factura_validada.cliente = cliente_encontrado
+    factura_validada.id = len(lista_facturas) + 1
     
-    val.cliente = cliente_encontrado
-    
-   
-    lista_facturas.append(val)
-    return val
+    lista_facturas.append(factura_validada)
+    return factura_validada
 
 @app.patch("/facturas/{factura_id}", response_model=Factura)
 async def editar_factura(factura_id: int, datos_factura: FacturaEditar):
