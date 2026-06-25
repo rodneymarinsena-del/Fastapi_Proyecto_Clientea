@@ -1,2 +1,2 @@
-este el cuarto commit
-se hiso lo del video y ademas la tarea 
+se creao el quito commit 
+se hicieron vastantes cambios y hicie uso del reciclaje 
