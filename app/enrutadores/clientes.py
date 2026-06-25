@@ -1,56 +1,57 @@
-from fastapi import APIRouter, HTTPException, status, Depends
-from typing import List
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlmodel import Session, select
+from typing import List
+from app.database import get_session
 from app.modelos.clientes import Cliente, ClienteCrear, ClienteEditar
-from app.database import get_session # Importamos la dependencia
 
 rutas_clientes = APIRouter()
 
-# --- ENDPOINTS CLIENTES ---
+# 1. Crear
+@rutas_clientes.post("/clientes/", response_model=Cliente)
+def crear_cliente(cliente_datos: ClienteCrear, session: Session = Depends(get_session)):
+    cliente_db = Cliente.model_validate(cliente_datos)
+    session.add(cliente_db)
+    session.commit()
+    session.refresh(cliente_db)
+    return cliente_db
 
-@rutas_clientes.get("/clientes", response_model=List[Cliente])
+# 2. Listar
+@rutas_clientes.get("/clientes/", response_model=List[Cliente])
 def listar_clientes(session: Session = Depends(get_session)):
     clientes = session.exec(select(Cliente)).all()
     return clientes
 
+# 3. Obtener uno
 @rutas_clientes.get("/clientes/{cliente_id}", response_model=Cliente)
-def listar_cliente(cliente_id: int, session: Session = Depends(get_session)):
-    cliente = session.get(Cliente, cliente_id)
-    if not cliente:
-        raise HTTPException(status_code=404, detail="Cliente no encontrado")
-    return cliente
+def obtener_cliente(cliente_id: int, session: Session = Depends(get_session)):
+    cliente_db = session.get(Cliente, cliente_id)
+    if not cliente_db:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Cliente no existe")
+    return cliente_db
 
-@rutas_clientes.post("/clientes", response_model=Cliente)
-def crear_cliente(cliente_crear: ClienteCrear, session: Session = Depends(get_session)):
-    # Convertimos el modelo de creación a un objeto Cliente (de base de datos)
-    nuevo_cliente = Cliente.model_validate(cliente_crear.model_dump())
-    session.add(nuevo_cliente)
-    session.commit()
-    session.refresh(nuevo_cliente)
-    return nuevo_cliente
-
+# 4. Editar (Aquí está el cambio clave del video)
 @rutas_clientes.patch("/clientes/{cliente_id}", response_model=Cliente)
-def editar_cliente(cliente_id: int, datos_cliente: ClienteEditar, session: Session = Depends(get_session)):
-    cliente = session.get(Cliente, cliente_id)
-    if not cliente:
-        raise HTTPException(status_code=404, detail="Cliente no encontrado")
+def editar_cliente(cliente_id: int, cliente_datos: ClienteEditar, session: Session = Depends(get_session)):
+    cliente_db = session.get(Cliente, cliente_id)
+    if not cliente_db:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Cliente no existe")
     
-    # Actualizamos los datos
-    datos_dict = datos_cliente.model_dump(exclude_unset=True)
-    for key, value in datos_dict.items():
-        setattr(cliente, key, value)
+    # El video usa model_dump y sqlmodel_update
+    datos_dict = cliente_datos.model_dump(exclude_unset=True)
+    cliente_db.sqlmodel_update(datos_dict) # <--- Este es el método correcto y limpio
     
-    session.add(cliente)
+    session.add(cliente_db)
     session.commit()
-    session.refresh(cliente)
-    return cliente
+    session.refresh(cliente_db)
+    return cliente_db
 
+# 5. Eliminar
 @rutas_clientes.delete("/clientes/{cliente_id}")
 def eliminar_cliente(cliente_id: int, session: Session = Depends(get_session)):
-    cliente = session.get(Cliente, cliente_id)
-    if not cliente:
-        raise HTTPException(status_code=404, detail="Cliente no encontrado")
+    cliente_db = session.get(Cliente, cliente_id)
+    if not cliente_db:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Cliente no existe")
     
-    session.delete(cliente)
+    session.delete(cliente_db)
     session.commit()
-    return {"message": "Cliente eliminado con éxito"}
+    return {"mensaje": "Cliente eliminado exitosamente"}
