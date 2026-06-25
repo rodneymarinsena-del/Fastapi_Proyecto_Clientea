@@ -1,8 +1,12 @@
-from sqlmodel import SQLModel, Field
-from typing import Optional
+from sqlmodel import SQLModel, Field, Relationship
+from typing import Optional, List, TYPE_CHECKING
 
-# 1. Clase base para validación (no es tabla)
-class ClienteBase(SQLModel): # Cambiamos de BaseModel a SQLModel
+# Importación para el tipado que no causa ciclos
+if TYPE_CHECKING:
+    from app.modelos.facturas import Factura
+
+# 1. Clase base para validación
+class ClienteBase(SQLModel):
     nombre: str
     email: str
     descripcion: str
@@ -10,8 +14,11 @@ class ClienteBase(SQLModel): # Cambiamos de BaseModel a SQLModel
 # 2. Clase para la base de datos (con table=True)
 class Cliente(ClienteBase, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
+    
+    # ESTA LÍNEA ES LA QUE FALTA PARA QUE EL ORM FUNCIONE
+    facturas: List["Factura"] = Relationship(back_populates="cliente")
 
-# 3. Esquemas para los endpoints (estos NO llevan table=True)
+# 3. Esquemas para los endpoints
 class ClienteCrear(ClienteBase):
     pass
 
