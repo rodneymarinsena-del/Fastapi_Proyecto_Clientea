@@ -1,18 +1,35 @@
-from fastapi import APIRouter, HTTPException, status, Depends
+from fastapi import APIRouter, HTTPException, Depends
 from typing import List
 from sqlmodel import Session, select
-from app.modelos.facturas import Factura, FacturaCrear, FacturaEditar, FacturaLeer
+from app.modelos.facturas import Factura, FacturaCrear, FacturaLeerCompuesta
 from app.modelos.clientes import Cliente
 from app.database import get_session
 
 rutas_facturas = APIRouter()
 
-# --- ENDPOINTS FACTURAS ---
-
-@rutas_facturas.get("/facturas", response_model=List[FacturaLeer])
+@rutas_facturas.get("/facturas", response_model=List[FacturaLeerCompuesta])
 def listar_facturas(session: Session = Depends(get_session)):
-    facturas = session.exec(select(Factura)).all()
-    return facturas
+    # Obtenemos todas las facturas
+    facturas_db = session.exec(select(Factura)).all()
+    
+    lista_resultado = []
+    
+    for f in facturas_db:
+        # Calculamos el total al vuelo
+        total = sum(t.cantidad * t.valor_unitario for t in f.transacciones)
+        
+        # Convertimos la factura a un diccionario para poder agregar 'valor_total'
+        # que no existe en la base de datos, solo en el modelo de lectura
+        datos_factura = f.model_dump()
+        datos_factura["valor_total"] = total
+        
+        # Aseguramos que los objetos relacionados se mantengan
+        datos_factura["cliente"] = f.cliente
+        datos_factura["transacciones"] = f.transacciones
+        
+        lista_resultado.append(datos_factura)
+        
+    return lista_resultado
 
 @rutas_facturas.get("/facturas/{factura_id}", response_model=Factura)
 def listar_factura(factura_id: int, session: Session = Depends(get_session)):
@@ -23,12 +40,10 @@ def listar_factura(factura_id: int, session: Session = Depends(get_session)):
 
 @rutas_facturas.post("/facturas/{cliente_id}", response_model=Factura)
 def crear_factura(cliente_id: int, factura_crear: FacturaCrear, session: Session = Depends(get_session)):
-    # Verificamos que el cliente exista en la BD
     cliente = session.get(Cliente, cliente_id)
     if not cliente:
         raise HTTPException(status_code=404, detail="Cliente no encontrado")
     
-    # Creamos la factura vinculada al cliente
     nueva_factura = Factura.model_validate(factura_crear.model_dump())
     nueva_factura.cliente_id = cliente_id 
     
@@ -60,3 +75,18 @@ def eliminar_factura(factura_id: int, session: Session = Depends(get_session)):
     session.delete(factura)
     session.commit()
     return {"message": "Factura eliminada con éxito"}
+
+@rutas_facturas.get("/facturas", response_model=List[FacturaLeerCompuesta])
+def listar_facturas(session: Session = Depends(get_session)):
+    facturas = session.exec(select(Factura)).all()
+    
+    # Lógica para calcular el total antes de devolver la respuesta
+    for f in facturas:
+        # Sumamos cantidad * valor_unitario de cada transacción
+        total = sum(t.cantidad * t.valor_unitario for t in f.transacciones)
+        # Como los objetos de base de datos no permiten añadir atributos nuevos fácilmente,
+        # lo ideal es convertir a un diccionario o usar el modelo compuesto.
+        # Una forma rápida es añadirlo dinámicamente si tu Pydantic lo permite:
+        f.valor_total = total 
+        
+    return facturas
