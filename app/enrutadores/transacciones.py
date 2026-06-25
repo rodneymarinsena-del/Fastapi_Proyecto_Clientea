@@ -36,10 +36,9 @@ def editar_transaccion(transaccion_id: int, datos_transaccion: TransaccionEditar
     if not transaccion:
         raise HTTPException(status_code=404, detail="Transacción no encontrada")
     
-    # Actualizamos solo los campos enviados
+    # Usamos sqlmodel_update para un código más profesional
     datos_dict = datos_transaccion.model_dump(exclude_unset=True)
-    for key, value in datos_dict.items():
-        setattr(transaccion, key, value)
+    transaccion.sqlmodel_update(datos_dict)
         
     session.add(transaccion)
     session.commit()
