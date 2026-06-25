@@ -1,5 +1,4 @@
 from pydantic import BaseModel
-from typing import Optional
 
 class ClienteBase(BaseModel):
     nombre: str
@@ -7,7 +6,10 @@ class ClienteBase(BaseModel):
     descripcion: str
 
 class Cliente(ClienteBase):
-    id: int
+    id: int | None = None
 
 class ClienteCrear(ClienteBase):
+    pass
+
+class ClienteEditar(ClienteBase):
     pass
