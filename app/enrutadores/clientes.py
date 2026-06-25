@@ -2,6 +2,7 @@ from fastapi import APIRouter, HTTPException, status
 from typing import List
 from app.modelos.clientes import Cliente, ClienteCrear, ClienteEditar
 
+from app.listas import lista_clientes
 # Instanciamos el router
 rutas_clientes = APIRouter()
 
