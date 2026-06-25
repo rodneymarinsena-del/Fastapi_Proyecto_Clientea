@@ -44,8 +44,7 @@ def editar_factura(factura_id: int, datos_factura: FacturaEditar, session: Sessi
         raise HTTPException(status_code=404, detail="Factura no encontrada")
     
     datos_dict = datos_factura.model_dump(exclude_unset=True)
-    for key, value in datos_dict.items():
-        setattr(factura, key, value)
+    factura.sqlmodel_update(datos_dict)
     
     session.add(factura)
     session.commit()
