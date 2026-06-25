@@ -1,7 +1,7 @@
 from typing import Optional, List, TYPE_CHECKING
 from sqlmodel import SQLModel, Field, Relationship
 from datetime import datetime
-
+from typing import List, Optional
 # ESTO ES LA CLAVE: 
 # Usar TYPE_CHECKING evita que se ejecuten los imports durante la carga del programa
 if TYPE_CHECKING:
@@ -32,12 +32,20 @@ class FacturaCrear(FacturaBase):
 class FacturaEditar(SQLModel):
     fecha: Optional[datetime] = None
 
+# IMPORTACIÓN REAL (fuera de TYPE_CHECKING)
+from app.modelos.clientes import ClienteLeer
+from app.modelos.transacciones import TransaccionLeer
+
 class FacturaLeer(FacturaBase):
     id: int
     cliente: Optional["ClienteLeer"] = None
     transacciones: List["TransaccionLeer"] = []
 
-from app.modelos.clientes import ClienteLeer
-from app.modelos.transacciones import TransaccionLeer
+# --- EL MODELO CLAVE PARA LA API ---
+class FacturaLeerCompuesta(FacturaLeer):
+    valor_total: float = 0.0
 
+# Reconstrucción de modelos para que las relaciones funcionen
+Factura.model_rebuild()
 FacturaLeer.model_rebuild()
+FacturaLeerCompuesta.model_rebuild()

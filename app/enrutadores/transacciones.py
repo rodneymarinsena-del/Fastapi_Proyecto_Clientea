@@ -1,8 +1,12 @@
-from fastapi import APIRouter, HTTPException, status, Depends
+from fastapi import APIRouter, HTTPException, Depends
 from typing import List
 from sqlmodel import Session, select
-from app.modelos.transacciones import Transaccion, TransaccionCrear, TransaccionEditar, TransaccionLeer
-from app.modelos.facturas import Factura
+from app.modelos.transacciones import (
+    Transaccion, 
+    TransaccionCrear, 
+    TransaccionEditar, 
+    TransaccionLeer
+)
 from app.database import get_session
 
 rutas_transacciones = APIRouter()
@@ -14,29 +18,39 @@ def listar_transacciones(session: Session = Depends(get_session)):
     transacciones = session.exec(select(Transaccion)).all()
     return transacciones
 
-@rutas_transacciones.post("/transacciones/{factura_id}", response_model=Transaccion)
-def crear_transaccion(factura_id: int, datos_transaccion: TransaccionCrear, session: Session = Depends(get_session)):
-    # 1. Verificamos que la factura exista
+@rutas_transacciones.post("/facturas/{factura_id}/transacciones", response_model=TransaccionLeer)
+def crear_transaccion(factura_id: int, transaccion_data: TransaccionCrear, session: Session = Depends(get_session)):
+    
+    # 1. Importación Lazy para evitar error de importación circular
+    from app.modelos.facturas import Factura
+    
+    # 2. Verificar existencia
     factura = session.get(Factura, factura_id)
     if not factura:
-        raise HTTPException(status_code=404, detail="Factura no encontrada")
+        raise HTTPException(status_code=404, detail=f"No existe una factura con ID {factura_id}")
     
-    # 2. Creamos la transacción vinculada a la factura
-    nueva_transaccion = Transaccion.model_validate(datos_transaccion.model_dump())
-    nueva_transaccion.factura_id = factura_id
+    # 3. La corrección: Usamos 'update' para inyectar el factura_id durante la validación
+    transaccion_db = Transaccion.model_validate(
+        transaccion_data, 
+        update={"factura_id": factura_id}
+    )
     
-    session.add(nueva_transaccion)
-    session.commit()
-    session.refresh(nueva_transaccion)
-    return nueva_transaccion
+    # 4. Guardar
+    try:
+        session.add(transaccion_db)
+        session.commit()
+        session.refresh(transaccion_db)
+        return transaccion_db
+    except Exception as e:
+        session.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
 
-@rutas_transacciones.patch("/transacciones/{transaccion_id}", response_model=Transaccion)
+@rutas_transacciones.patch("/transacciones/{transaccion_id}", response_model=TransaccionLeer)
 def editar_transaccion(transaccion_id: int, datos_transaccion: TransaccionEditar, session: Session = Depends(get_session)):
     transaccion = session.get(Transaccion, transaccion_id)
     if not transaccion:
         raise HTTPException(status_code=404, detail="Transacción no encontrada")
     
-    # Usamos sqlmodel_update para un código más profesional
     datos_dict = datos_transaccion.model_dump(exclude_unset=True)
     transaccion.sqlmodel_update(datos_dict)
         

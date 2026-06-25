@@ -13,9 +13,8 @@ class TransaccionBase(SQLModel):
 # 2. Clase para la base de datos (con table=True)
 class Transaccion(TransaccionBase, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
-    factura_id: Optional[int] = Field(default=None, foreign_key="factura.id")
-    
-    # Relación inversa usando string para evitar el error de importación
+    factura_id: int = Field(foreign_key="factura.id")
+    # Nueva relación:
     factura: Optional["Factura"] = Relationship(back_populates="transacciones")
 
 # 3. Esquemas para endpoints
