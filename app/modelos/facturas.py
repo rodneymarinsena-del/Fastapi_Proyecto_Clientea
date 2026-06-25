@@ -1,27 +1,29 @@
-from pydantic import BaseModel, computed_field
-from typing import List
+from sqlmodel import SQLModel, Field, Relationship
+from typing import Optional, List, TYPE_CHECKING
 from datetime import datetime
-from .clientes import Cliente
-from .transacciones import Transaccion
 
-class FacturaBase(BaseModel):
-    cliente: Cliente | None = None
-    fecha: datetime = datetime.now()
-    transacciones: List[Transaccion] = []
+# Esto es necesario para que el tipado funcione sin causar errores de importación
+if TYPE_CHECKING:
+    from app.modelos.clientes import Cliente
+    from app.modelos.transacciones import Transaccion
 
-    @computed_field
+class FacturaBase(SQLModel):
+    fecha: datetime = Field(default_factory=datetime.now)
+    cliente_id: Optional[int] = Field(default=None, foreign_key="cliente.id")
+
+class Factura(FacturaBase, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    
+    # Usamos strings entre comillas para evitar el ciclo de importación
+    cliente: Optional["Cliente"] = Relationship(back_populates="facturas")
+    transacciones: List["Transaccion"] = Relationship(back_populates="factura")
+
     @property
     def valor_total(self) -> float:
-        total_factura = 0.0
-        for transaccion in self.transacciones:
-            total_factura += (transaccion.cantidad * transaccion.valor_unitario)
-        return total_factura
-
-class Factura(FacturaBase):
-    id: int | None = None
+        return sum(t.cantidad * t.valor_unitario for t in self.transacciones)
 
 class FacturaCrear(FacturaBase):
     pass
 
-class FacturaEditar(FacturaBase):
-    pass
+class FacturaEditar(SQLModel):
+    fecha: Optional[datetime] = None
