@@ -1,7 +1,7 @@
 from fastapi import APIRouter, HTTPException, status, Depends
 from typing import List
 from sqlmodel import Session, select
-from app.modelos.transacciones import Transaccion, TransaccionCrear, TransaccionEditar
+from app.modelos.transacciones import Transaccion, TransaccionCrear, TransaccionEditar, TransaccionLeer
 from app.modelos.facturas import Factura
 from app.database import get_session
 
@@ -9,7 +9,7 @@ rutas_transacciones = APIRouter()
 
 # --- ENDPOINTS TRANSACCIONES ---
 
-@rutas_transacciones.get("/transacciones", response_model=List[Transaccion])
+@rutas_transacciones.get("/transacciones", response_model=List[TransaccionLeer])
 def listar_transacciones(session: Session = Depends(get_session)):
     transacciones = session.exec(select(Transaccion)).all()
     return transacciones

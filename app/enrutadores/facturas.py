@@ -1,7 +1,7 @@
 from fastapi import APIRouter, HTTPException, status, Depends
 from typing import List
 from sqlmodel import Session, select
-from app.modelos.facturas import Factura, FacturaCrear, FacturaEditar
+from app.modelos.facturas import Factura, FacturaCrear, FacturaEditar, FacturaLeer
 from app.modelos.clientes import Cliente
 from app.database import get_session
 
@@ -9,7 +9,7 @@ rutas_facturas = APIRouter()
 
 # --- ENDPOINTS FACTURAS ---
 
-@rutas_facturas.get("/facturas", response_model=List[Factura])
+@rutas_facturas.get("/facturas", response_model=List[FacturaLeer])
 def listar_facturas(session: Session = Depends(get_session)):
     facturas = session.exec(select(Factura)).all()
     return facturas

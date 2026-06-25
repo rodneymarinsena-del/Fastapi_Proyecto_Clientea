@@ -25,3 +25,7 @@ class TransaccionCrear(TransaccionBase):
 class TransaccionEditar(SQLModel):
     cantidad: Optional[float] = None
     valor_unitario: Optional[float] = None
+
+class TransaccionLeer(TransaccionBase):
+    id: int
+    factura_id: int
