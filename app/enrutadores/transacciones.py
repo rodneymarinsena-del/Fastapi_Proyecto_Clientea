@@ -18,6 +18,18 @@ def listar_transacciones(session: Session = Depends(get_session)):
     transacciones = session.exec(select(Transaccion)).all()
     return transacciones
 
+@rutas_transacciones.get("/transacciones/{transaccion_id}", response_model=TransaccionLeer)
+def listar_transaccion(transaccion_id: int, session: Session = Depends(get_session)):
+    transaccion = session.get(Transaccion, transaccion_id)
+
+    if not transaccion:
+        raise HTTPException(
+            status_code=404,
+            detail="Transacción no encontrada"
+        )
+
+    return transaccion
+
 @rutas_transacciones.post("/facturas/{factura_id}/transacciones", response_model=TransaccionLeer)
 def crear_transaccion(factura_id: int, transaccion_data: TransaccionCrear, session: Session = Depends(get_session)):
     
